@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kurdistan Historical Atlas — Çavkaniya Dîrokî</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --navy:    #0D1B2A;
+  --navy2:   #152336;
+  --navy3:   #1E3148;
+  --sand:    #C9A96E;
+  --sand2:   #E8C97A;
+  --sage:    #4A7C59;
+  --terra:   #B85C38;
+  --cream:   #F2EDE4;
+  --cream2:  #E8E0D5;
+  --text:    #1A1A2E;
+  --text2:   #3D3D5C;
+  --muted:   #7A7A9A;
+  --border:  #D4CBBE;
+  --panel-bg:#FFFFFF;
+  --map-bg:  #F2EDE4;
+  --shadow:  0 8px 32px rgba(13,27,42,0.12);
+  --shadow2: 0 2px 8px rgba(13,27,42,0.08);
+  --r:       8px;
+  --r2:      14px;
+  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+[data-theme="dark"] {
+  --cream:   #0D1B2A;
+  --cream2:  #152336;
+  --text:    #F2EDE4;
+  --text2:   #C9B99A;
+  --muted:   #8A8AA8;
+  --border:  #2A3A50;
+  --panel-bg:#152336;
+  --map-bg:  #0D1B2A;
+  --shadow:  0 8px 32px rgba(0,0,0,0.4);
+  --shadow2: 0 2px 8px rgba(0,0,0,0.3);
+  --sand:    #E8C97A;
+  --sand2:   #F0D890;
+}
+/* ─── RESET ──────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:15px;color:var(--text);background:var(--cream);transition:background var(--transition),color var(--transition)}
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100vh}
+#topbar{display:flex;align-items:center;gap:12px;padding:0 16px;height:58px;background:var(--navy);border-bottom:1px solid rgba(201,169,110,0.25);z-index:1000;flex-shrink:0;position:relative}
+#main{display:flex;flex:1;overflow:hidden;position:relative}
+#map-container{flex:1;position:relative;background:var(--map-bg)}
+#map{width:100%;height:100%}
+/* ─── TOPBAR ─────────────────────────────────────────────── */
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--sand),var(--sand2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-text{color:#fff;font-family:'Playfair Display',serif;font-size:17px;font-weight:700;letter-spacing:-0.3px;line-height:1.1}
+.logo-sub{color:var(--sand);font-family:'Inter',sans-serif;font-size:10px;font-weight:400;letter-spacing:1.5px;text-transform:uppercase;display:block}
+.topbar-sep{width:1px;height:28px;background:rgba(255,255,255,0.12);margin:0 4px}
+#search-wrap{flex:1;max-width:320px;position:relative}
+#search{width:100%;padding:8px 12px 8px 36px;border:1px solid rgba(255,255,255,0.15);border-radius:var(--r);background:rgba(255,255,255,0.08);color:#fff;font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border var(--transition)}
+#search::placeholder{color:rgba(255,255,255,0.4)}
+#search:focus{border-color:var(--sand);background:rgba(255,255,255,0.12)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.4);pointer-events:none;font-size:14px}
+#search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--panel-bg);border-radius:var(--r);box-shadow:var(--shadow);z-index:2000;display:none;max-height:220px;overflow-y:auto}
+.sr-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;transition:background var(--transition)}
+.sr-item:last-child{border-bottom:none}
+.sr-item:hover{background:var(--cream)}
+.sr-item strong{color:var(--navy);display:block;font-size:13px}
+.sr-cat{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+[data-theme="dark"] .sr-item strong{color:var(--sand)}
+[data-theme="dark"] .sr-item:hover{background:var(--navy3)}
+/* filter bar */
+#filter-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+#filter-bar::-webkit-scrollbar{display:none}
+.filter-btn{padding:5px 13px;border:1px solid rgba(255,255,255,0.2);border-radius:20px;background:transparent;color:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;transition:all var(--transition);letter-spacing:.3px}
+.filter-btn:hover{border-color:var(--sand);color:var(--sand)}
+.filter-btn.active{background:var(--sand);color:var(--navy);border-color:var(--sand);font-weight:600}
+/* topbar actions */
+.tb-btn{background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:6px;border-radius:6px;font-size:16px;line-height:1;transition:all var(--transition);display:flex;align-items:center;gap:5px}
+.tb-btn:hover{color:#fff;background:rgba(255,255,255,0.1)}
+.tb-btn.active{color:var(--sand2)}
+.tb-label{font-size:11px;font-weight:500;letter-spacing:.5px}
+/* ─── DETAIL PANEL ───────────────────────────────────────── */
+#detail-panel{position:absolute;top:0;right:0;width:400px;height:100%;background:var(--panel-bg);box-shadow:-4px 0 24px rgba(13,27,42,0.15);z-index:800;transform:translateX(100%);transition:transform var(--transition);display:flex;flex-direction:column;overflow:hidden}
+#detail-panel.open{transform:translateX(0)}
+#panel-header{background:var(--navy);padding:20px 20px 16px;flex-shrink:0}
+.panel-cat-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+#panel-title{color:#fff;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.25;margin-bottom:4px}
+#panel-subtitle{color:var(--sand);font-size:13px;opacity:.85}
+#panel-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1;transition:background var(--transition);display:flex;align-items:center;justify-content:center}
+#panel-close:hover{background:rgba(255,255,255,0.2)}
+#panel-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--panel-bg);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+#panel-tabs::-webkit-scrollbar{display:none}
+.ptab{padding:12px 16px;font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);background:none;border-left:none;border-right:none;border-top:none;transition:all var(--transition);white-space:nowrap}
+.ptab.active{color:var(--sand);border-bottom-color:var(--sand)}
+.ptab:hover:not(.active){color:var(--text)}
+#panel-body{flex:1;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+#panel-body::-webkit-scrollbar{width:4px}
+#panel-body::-webkit-scrollbar-track{background:transparent}
+#panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* content styles */
+.section-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--sand);margin:20px 0 8px}
+.section-label:first-child{margin-top:0}
+.prose{font-size:14px;line-height:1.7;color:var(--text2);margin-bottom:12px}
+.highlight-box{background:linear-gradient(135deg,rgba(201,169,110,.08),rgba(201,169,110,.03));border-left:3px solid var(--sand);padding:12px 14px;border-radius:0 var(--r) var(--r) 0;margin:12px 0}
+.highlight-box p{font-size:13px;line-height:1.65;color:var(--text2);font-style:italic}
+/* timeline */
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:20px;animation:fadeUp .4s ease both}
+.tl-dot{position:absolute;left:-20px;top:4px;width:14px;height:14px;border-radius:50%;border:2px solid var(--panel-bg);box-shadow:0 0 0 2px var(--sand);background:var(--sand);z-index:1;transition:transform var(--transition)}
+.tl-dot.revolt{box-shadow:0 0 0 2px var(--terra);background:var(--terra)}
+.tl-dot.tragedy{box-shadow:0 0 0 2px #8B1A1A;background:#8B1A1A}
+.tl-dot.culture{box-shadow:0 0 0 2px var(--sage);background:var(--sage)}
+.tl-dot.political{box-shadow:0 0 0 2px #4A90D9;background:#4A90D9}
+.tl-dot.battle{box-shadow:0 0 0 2px #7B4FA3;background:#7B4FA3}
+.tl-dot.landmark{box-shadow:0 0 0 2px var(--sand2);background:var(--sand2)}
+.tl-year{font-size:11px;font-weight:700;color:var(--sand);letter-spacing:.5px;margin-bottom:2px}
+.tl-event{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.tl-desc{font-size:12px;color:var(--text2);line-height:1.55}
+/* figures */
+.figure-card{display:flex;gap:12px;padding:12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;transition:box-shadow var(--transition)}
+.figure-card:hover{box-shadow:var(--shadow2)}
+.fig-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy3));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.fig-info h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.fig-info p{font-size:12px;color:var(--text2);line-height:1.5}
+.fig-role{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--sand);margin-bottom:3px}
+/* sources */
+.source-item{padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;font-size:12px;color:var(--text2);line-height:1.5}
+.source-item strong{color:var(--text);font-weight:600}
+/* gallery meta */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.meta-cell{background:var(--cream);border-radius:var(--r);padding:10px 12px}
+[data-theme="dark"] .meta-cell{background:var(--navy3)}
+.meta-cell .key{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.meta-cell .val{font-size:13px;font-weight:500;color:var(--text)}
+/* ─── TIMELINE DRAWER ────────────────────────────────────── */
+#timeline-drawer{position:absolute;bottom:0;left:0;right:0;background:var(--panel-bg);border-top:1px solid var(--border);z-index:700;transform:translateY(100%);transition:transform var(--transition);max-height:240px}
+#timeline-drawer.open{transform:translateY(0)}
+#tl-header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)}
+#tl-header h3{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--text)}
+#tl-range{font-size:12px;color:var(--muted);margin-left:auto}
+.tl-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px}
+#tl-scroll{overflow-x:auto;padding:16px 18px;display:flex;gap:0;position:relative;min-height:120px}
+#tl-scroll::-webkit-scrollbar{height:4px}
+#tl-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tl-track{display:flex;gap:0;position:relative;align-items:flex-end;padding-bottom:28px}
+.tl-tick{display:flex;flex-direction:column;align-items:center;min-width:80px;position:relative;cursor:pointer}
+.tl-tick-year{font-size:10px;color:var(--muted);position:absolute;bottom:0;left:50%;transform:translateX(-50%);white-space:nowrap}
+.tl-tick-line{width:1px;background:var(--border);height:20px;margin-bottom:4px}
+.tl-evt-dot{width:10px;height:10px;border-radius:50%;background:var(--sand);border:2px solid var(--panel-bg);box-shadow:0 0 0 1.5px var(--sand);transition:transform var(--transition);cursor:pointer;margin-bottom:2px}
+.tl-evt-dot:hover{transform:scale(1.4)}
+.tl-evt-dot.revolt{box-shadow:0 0 0 1.5px var(--terra);background:var(--terra)}
+.tl-evt-dot.tragedy{box-shadow:0 0 0 1.5px #8B1A1A;background:#8B1A1A}
+.tl-evt-dot.culture{box-shadow:0 0 0 1.5px var(--sage);background:var(--sage)}
+.tl-evt-dot.political{box-shadow:0 0 0 1.5px #4A90D9;background:#4A90D9}
+.tl-evt-label{font-size:9px;color:var(--muted);text-align:center;max-width:72px;line-height:1.3;margin-top:2px}
+/* ─── MAP ATTRIBUTION & LEAFLET TWEAKS ──────────────────── */
+.leaflet-control-zoom{border:none !important;box-shadow:var(--shadow2) !important}
+.leaflet-control-zoom a{background:var(--panel-bg) !important;color:var(--text) !important;border-color:var(--border) !important;width:32px !important;height:32px !important;line-height:32px !important;font-size:16px !important}
+.leaflet-popup-content-wrapper{background:var(--panel-bg);border-radius:var(--r2);box-shadow:var(--shadow);border:none}
+.leaflet-popup-tip{background:var(--panel-bg)}
+.leaflet-popup-content{margin:12px 16px;font-family:'Inter',sans-serif;color:var(--text)}
+.popup-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:3px}
+.popup-sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+.popup-btn{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500;transition:background var(--transition);display:block;width:100%;text-align:center;margin-top:8px}
+.popup-btn:hover{background:var(--navy3)}
+/* ─── MAP PULSE MARKERS ──────────────────────────────────── */
+.pulse-marker{position:relative;cursor:pointer}
+.pulse-inner{width:14px;height:14px;border-radius:50%;background:var(--sand2);border:2.5px solid var(--navy);position:relative;z-index:2}
+.pulse-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;border:2px solid var(--sand2);opacity:.7;animation:pulse 2.2s ease-out infinite}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.7}100%{transform:translate(-50%,-50%) scale(3.5);opacity:0}}
+.pulse-inner.revolt{background:var(--terra);border-color:#6B2A1A}
+.pulse-ring.revolt{border-color:var(--terra)}
+.pulse-inner.tragedy{background:#C0392B;border-color:#6B1010}
+.pulse-ring.tragedy{border-color:#C0392B}
+.pulse-inner.culture{background:var(--sage);border-color:#1E3A2A}
+.pulse-ring.culture{border-color:var(--sage)}
+.pulse-inner.political{background:#2980B9;border-color:#1A4A70}
+.pulse-ring.political{border-color:#2980B9}
+.pulse-inner.landmark{background:var(--sand2);border-color:#6B4A10}
+.pulse-ring.landmark{border-color:var(--sand2)}
+/* ─── LEGEND ─────────────────────────────────────────────── */
+#legend{position:absolute;bottom:16px;left:16px;background:var(--panel-bg);border-radius:var(--r2);box-shadow:var(--shadow);padding:12px 15px;z-index:700;min-width:160px;transition:opacity var(--transition)}
+#legend h4{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;color:var(--text2)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* ─── LOADING ─────────────────────────────────────────────── */
+#loading{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px;transition:opacity .5s}
+#loading.hide{opacity:0;pointer-events:none}
+.loading-logo{font-family:'Playfair Display',serif;color:#fff;font-size:28px;font-weight:700}
+.loading-sub{color:var(--sand);font-size:13px;letter-spacing:2px;text-transform:uppercase}
+.loading-bar{width:200px;height:2px;background:rgba(255,255,255,0.1);border-radius:1px;overflow:hidden}
+.loading-fill{height:100%;width:0;background:linear-gradient(90deg,var(--sand),var(--sand2));border-radius:1px;animation:fill 1.2s ease forwards .3s}
+@keyframes fill{to{width:100%}}
+/* ─── ANIMATIONS ─────────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.fade-up{animation:fadeUp .4s ease both}
+/* ─── MOBILE ─────────────────────────────────────────────── */
+@media(max-width:768px){
+  .logo-text{font-size:14px}
+  .logo-sub{display:none}
+  #filter-bar{display:none}
+  .topbar-sep{display:none}
+  #detail-panel{width:100%;bottom:0;height:80vh;top:auto;transform:translateY(100%)}
+  #detail-panel.open{transform:translateY(0)}
+  #legend{bottom:20px;right:16px;left:auto}
+  #search-wrap{max-width:180px}
+}
+/* ─── CATEGORY COLORS ────────────────────────────────────── */
+.cat-revolt{background:rgba(184,92,56,.15);color:#B85C38;border-color:rgba(184,92,56,.3)}
+.cat-tragedy{background:rgba(139,26,26,.15);color:#C0392B;border-color:rgba(139,26,26,.3)}
+.cat-culture{background:rgba(74,124,89,.15);color:#4A7C59;border-color:rgba(74,124,89,.3)}
+.cat-political{background:rgba(41,128,185,.15);color:#2980B9;border-color:rgba(41,128,185,.3)}
+.cat-battle{background:rgba(123,79,163,.15);color:#7B4FA3;border-color:rgba(123,79,163,.3)}
+.cat-landmark{background:rgba(232,201,122,.2);color:#8B6914;border-color:rgba(201,169,110,.3)}
+[data-theme="dark"] .cat-landmark{color:var(--sand2)}
+/* tag */
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin:2px 3px 2px 0}
+.tag-year{background:var(--cream);color:var(--muted);border:1px solid var(--border)}
+[data-theme="dark"] .tag-year{background:var(--navy3)}
+/* no-select panel header */
+#panel-header{position:relative;user-select:none}
+/* tooltip */
+[title]{cursor:help}
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div class="loading-logo">Kurdistan Atlas</div>
+  <div class="loading-sub">Çavkaniya Dîrokî · Historical Source</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<div id="app">
+  <!-- Top bar -->
+  <nav id="topbar">
+    <a class="logo" href="#">
+      <div class="logo-icon">☀️</div>
+      <div class="logo-text">Kurdistan Atlas<span class="logo-sub">Historical &amp; Cultural</span></div>
+    </a>
+    <div class="topbar-sep"></div>
+
+    <div id="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="search" type="text" placeholder="Search locations, events…" autocomplete="off"/>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="topbar-sep"></div>
+    <div id="filter-bar">
+      <button class="filter-btn active" data-cat="all">All</button>
+      <button class="filter-btn" data-cat="landmark">🏛 Landmarks</button>
+      <button class="filter-btn" data-cat="revolt">⚔ Revolts</button>
+      <button class="filter-btn" data-cat="battle">🛡 Battles</button>
+      <button class="filter-btn" data-cat="political">📜 Political</button>
+      <button class="filter-btn" data-cat="tragedy">🕊 Tragedies</button>
+      <button class="filter-btn" data-cat="culture">🎭 Culture</button>
+    </div>
+
+    <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
+      <button class="tb-btn" id="btn-timeline" title="Toggle timeline">📅<span class="tb-label" style="display:none">Timeline</span></button>
+      <button class="tb-btn" id="btn-dark" title="Toggle dark mode">🌙</button>
+      <button class="tb-btn" id="btn-locate" title="Fit to Kurdistan">🗺</button>
+    </div>
+  </nav>
+
+  <!-- Main area -->
+  <div id="main">
+    <!-- Map -->
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+
+    <!-- Detail Panel -->
+    <aside id="detail-panel">
+      <div id="panel-header">
+        <button id="panel-close">✕</button>
+        <span class="panel-cat-badge" id="panel-badge"></span>
+        <div id="panel-title">Location</div>
+        <div id="panel-subtitle"></div>
+      </div>
+      <div id="panel-tabs">
+        <button class="ptab active" data-tab="overview">Overview</button>
+        <button class="ptab" data-tab="history">History</button>
+        <button class="ptab" data-tab="events">Events</button>
+        <button class="ptab" data-tab="figures">Figures</button>
+        <button class="ptab" data-tab="sources">Sources</button>
+      </div>
+      <div id="panel-body">
+        <div class="tab-content active" id="tab-overview"></div>
+        <div class="tab-content" id="tab-history"></div>
+        <div class="tab-content" id="tab-events"></div>
+        <div class="tab-content" id="tab-figures"></div>
+        <div class="tab-content" id="tab-sources"></div>
+      </div>
+    </aside>
+
+    <!-- Legend -->
+    <div id="legend">
+      <h4>Categories</h4>
+      <div class="legend-item"><div class="legend-dot" style="background:#C9A96E"></div>Landmark / City</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#B85C38"></div>Revolt / Uprising</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7B4FA3"></div>Battle</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2980B9"></div>Political Event</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#C0392B"></div>Tragedy</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4A7C59"></div>Culture</div>
+    </div>
+
+    <!-- Timeline Drawer -->
+    <div id="timeline-drawer">
+      <div id="tl-header">
+        <h3>Historical Timeline</h3>
+        <span id="tl-range">Scroll to explore · 1514 – 2003</span>
+        <button class="tl-close" id="tl-close-btn">✕</button>
+      </div>
+      <div id="tl-scroll"><div class="tl-track" id="tl-track"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+window.addEventListener('load', function() {
+if (typeof L === 'undefined') {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#c0392b;font-size:16px;">Failed to load map library. Please check your internet connection and refresh.</div>';
+  return;
+}
+(function() {
+/* ═══════════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════════ */
+const LOCATIONS = [
+  {
+    id: 'erbil',
+    name: 'Erbil (Hewlêr)',
+    subtitle: 'Capital of the Kurdistan Region of Iraq',
+    lat: 36.191, lng: 44.009,
+    cat: 'landmark',
+    emoji: '🏰',
+    overview: `Erbil, known in Kurdish as Hewlêr, is one of the oldest continuously inhabited cities on Earth. Its iconic citadel — Qela Hewlêr — rises 25–32 metres above the surrounding plain and has been home to successive civilisations for more than 6,000 years. Today Erbil serves as the capital of the Kurdistan Region of Iraq (KRI), a semi-autonomous federal region established following the 1991 uprising and formalised under Iraq\u2019s 2005 constitution.`,
+    overview2: `The city is a centre of Kurdish cultural life, commerce, and governance. Modern Erbil has expanded rapidly since 2003, yet the ancient citadel, designated a UNESCO World Heritage Site in 2014, anchors the city\u2019s identity to its deep past.`,
+    metaGrid: [
+      {key:'Kurdmanî name', val:'Hewlêr'},
+      {key:'Governorate', val:'Erbil'},
+      {key:'Established', val:'c. 4000 BCE'},
+      {key:'Population (est.)', val:'~1.6 million'},
+      {key:'UNESCO Site', val:'Erbil Citadel (2014)'},
+      {key:'Status', val:'KRI Capital'},
+    ],
+    highlight: 'The Erbil Citadel (Qela Hewlêr) is considered one of the oldest continuously occupied settlements on Earth and was added to the UNESCO World Heritage List in 2014.',
+    history: [
+      {year:'c. 2300 BCE', event:'Mentioned in Akkadian cuneiform', desc:'Erbil appears in Akkadian texts as "Urbilum," a provincial capital of the Akkadian Empire.', cat:'landmark'},
+      {year:'331 BCE', event:'Battle of Gaugamela nearby', desc:'Alexander the Great defeated the Persian King Darius III near modern Erbil, ending the Achaemenid Empire.', cat:'battle'},
+      {year:'1st–3rd c. CE', event:'Assyrian Christian community', desc:'Erbil became a major centre of Christianity in Mesopotamia; its bishops attended early Church councils.', cat:'culture'},
+      {year:'637 CE', event:'Arab Muslim conquest', desc:'The region passed into the Islamic Caliphate, initiating a long period of Arab and Persian political influence over Kurdish populations.', cat:'political'},
+      {year:'1190–1232', event:'Zengid emirate', desc:'The Kurdish Zengid rulers governed Erbil; the era produced important scholarship in Islamic sciences.', cat:'political'},
+      {year:'1258', event:'Mongol invasion', desc:'Hulagu Khan\u2019s forces swept through the region, devastating cities throughout Mesopotamia and Kurdistan.', cat:'battle'},
+      {year:'1514', event:'Battle of Chaldiran', desc:'The Ottoman–Safavid struggle divided Kurdish lands for centuries.', cat:'battle'},
+      {year:'1991', event:'Kurdish uprising — Raperîn', desc:'After the Gulf War, Kurds rose against Ba\'athist rule; Erbil briefly fell to Kurdish peshmerga before a mass refugee exodus.', cat:'revolt'},
+      {year:'1992', event:'First Kurdistan regional election', desc:'The Kurdistan Front held the first free elections in the region, forming the Kurdistan Regional Government (KRG).', cat:'political'},
+      {year:'2003', event:'Post-Saddam era begins', desc:'The fall of the Ba\'ath regime allowed the KRG to consolidate authority over Erbil and expand its institutions.', cat:'political'},
+      {year:'2014', event:'UNESCO World Heritage — Citadel', desc:'Erbil Citadel inscribed on the UNESCO World Heritage List, recognising 6,000 years of continuous human habitation.', cat:'landmark'},
+    ],
+    globalEvents: ['raperın-1991','chaldiran-1514','gaugamela-331bce'],
+    figures: [
+      {name:'Masoud Barzani', role:'Political Leader', emoji:'👤', desc:'President of the Kurdistan Region (2005–2017), son of Mustafa Barzani; oversaw Erbil\'s transformation into the KRI capital.'},
+      {name:'Mulla Mustafa Barzani', role:'Military & Political Leader', emoji:'⭐', desc:'Legendary Kurdish leader who commanded the Kurdish movement for decades and founded the Kurdistan Democratic Party (KDP) in 1946.'},
+    ],
+    sources: [
+      {title:'Erbil Citadel — UNESCO World Heritage', detail:'Official UNESCO entry documenting archaeological and architectural history of Qela Hewlêr.'},
+      {title:'McDowall, David — A Modern History of the Kurds', detail:'Tauris, 2004. Comprehensive political and social history of Kurdish peoples across the 20th century.'},
+      {title:'Kurdistan Regional Government Official Portal', detail:'krg.org — institutional documentation on the KRG\'s formation and governance.'},
+    ]
+  },
+
+  {
+    id: 'sulaymaniyah',
+    name: 'Sulaymaniyah (Silêmanî)',
+    subtitle: 'Cultural capital of the Kurdistan Region',
+    lat: 35.557, lng: 45.432,
+    cat: 'culture',
+    emoji: '🎭',
+    overview: `Sulaymaniyah — Silêmanî in Kurdish — is widely regarded as the intellectual and cultural heart of Kurdistan. Founded in 1784 by Ibrahim Pasha Baban, the city grew rapidly under the Baban principality and became a centre of Kurdish poetry, literature, and political thought. Today it is the second largest city of the Kurdistan Region of Iraq.`,
+    overview2: `The city hosted the pivotal 1991 uprising and was the base for the Patriotic Union of Kurdistan (PUK). Sulaymaniyah\u2019s vibrant café culture, open press, and universities have made it a hub for civil society across the broader Kurdish world.`,
+    metaGrid: [
+      {key:'Kurdish name', val:'Silêmanî'},
+      {key:'Founded', val:'1784'},
+      {key:'Founder', val:'Ibrahim Pasha Baban'},
+      {key:'Governorate', val:'Sulaymaniyah'},
+      {key:'Known for', val:'Arts, Poetry, Press'},
+      {key:'Major party', val:'PUK (est. 1975)'},
+    ],
+    highlight: 'The city\'s literary tradition stretches back to the great Kurdish poets Nali and Salim; Sulaymaniyah remains a cradle of Kurdish print media and university life.',
+    history: [
+      {year:'1784', event:'City founded by Ibrahim Pasha Baban', desc:'The Baban principality established Sulaymaniyah as its capital, fostering a flourishing of Kurdish culture and arts.', cat:'landmark'},
+      {year:'1820s', event:'Golden age of Kurdish poetry', desc:'Poets like Nali and Salim flourished in Sulaymaniyah, composing classic Kurdish ghazals and lyric poetry.', cat:'culture'},
+      {year:'1914–1918', event:'World War I upheaval', desc:'The collapse of the Ottoman Empire left Kurdish communities fragmented between emerging nation-states.', cat:'political'},
+      {year:'1925', event:'Sheikh Said revolt suppressed', desc:'Widespread Kurdish revolts against the new Turkish Republic were crushed; many Kurds fled south into Iraq.', cat:'revolt'},
+      {year:'1961–1975', event:'The Kurdish–Iraqi war', desc:'Mustafa Barzani led a prolonged armed struggle against the Iraqi government; Sulaymaniyah was a key political base.', cat:'revolt'},
+      {year:'1975', event:'Algiers Accord — PUK founded', desc:'The collapse of the 1975 Algiers Accord prompted Jalal Talabani to found the Patriotic Union of Kurdistan (PUK) in Sulaymaniyah.', cat:'political'},
+      {year:'1986–1989', event:'Anfal genocide operations', desc:'The Ba\'athist Anfal campaign targeted Kurdish civilians; villages around Sulaymaniyah were destroyed and populations displaced.', cat:'tragedy'},
+      {year:'1991', event:'Raperîn uprising — city liberated', desc:'Kurdish peshmerga seized Sulaymaniyah in March 1991 during the Raperîn uprising; the city became the PUK headquarters.', cat:'revolt'},
+      {year:'2003+', event:'KRG consolidation', desc:'Following the fall of Saddam Hussein, Sulaymaniyah grew rapidly as a centre of Kurdish media, universities, and NGOs.', cat:'political'},
+    ],
+    globalEvents: ['raperın-1991','anfal-campaign'],
+    figures: [
+      {name:'Jalal Talabani', role:'Founder, PUK | Iraq\'s first Kurdish President', emoji:'👤', desc:'Co-founded the PUK in 1975 in Sulaymaniyah; served as President of Iraq 2005–2014, the first Kurdish and non-Arab head of state in Iraq\'s history.'},
+      {name:'Nali (Molla Khalid)', role:'Poet, c. 1800–1856', emoji:'📜', desc:'One of the greatest classical Kurdish poets, whose lyric ghazals in the Sorani dialect helped define Kurdish literary language.'},
+      {name:'Bachtyar Ali', role:'Novelist, b. 1966', emoji:'📖', desc:'Sulaymaniyah-born author whose magical-realist novels, translated into many languages, explore Kurdish identity, exile, and memory.'},
+    ],
+    sources: [
+      {title:'Jwaideh, Wadie — The Kurdish National Movement', detail:'Syracuse UP, 2006. Foundational academic study of Kurdish political identity from the 19th century onward.'},
+      {title:'Talabani, Jalal — Autobiography and collected speeches', detail:'PUK archive, Sulaymaniyah.'},
+      {title:'Human Rights Watch — Genocide in Iraq: The Anfal Campaign', detail:'New York, 1993. Documented testimonies from survivors of the Anfal.'},
+    ]
+  },
+
+  {
+    id: 'halabja',
+    name: 'Halabja (Helebce)',
+    subtitle: 'Site of the 1988 chemical attack — Anfal genocide',
+    lat: 35.179, lng: 45.986,
+    cat: 'tragedy',
+    emoji: '🕊',
+    overview: `Halabja is a Kurdish town in the Sulaymaniyah Governorate, situated near the Iranian border. On 16–17 March 1988, the town became the site of the largest chemical weapons attack in history against a civilian population. Iraqi forces under the orders of Ali Hassan al-Majid (known as "Chemical Ali") dropped bombs containing mustard gas, sarin, tabun, and hydrogen cyanide on the town and surrounding villages.`,
+    overview2: `Between 3,200 and 5,000 civilians — men, women, and children — were killed in the attack. Tens of thousands more suffered long-term injuries, cancers, and genetic disorders. The massacre occurred during the broader Anfal campaign, a series of military operations against Kurdish populations in northern Iraq that international courts and the Iraqi High Tribunal have recognised as genocide.`,
+    metaGrid: [
+      {key:'Date of attack', val:'16–17 Mar 1988'},
+      {key:'Perpetrator', val:'Iraqi Ba\'ath regime'},
+      {key:'Agents used', val:'Mustard gas, Sarin, VX'},
+      {key:'Civilian deaths', val:'3,200–5,000'},
+      {key:'Campaign', val:'Anfal genocide'},
+      {key:'Recognition', val:'Genocide (IHT, 2010)'},
+    ],
+    highlight: 'The Halabja chemical attack is the largest use of chemical weapons against a civilian population in history. The Iraqi High Tribunal ruled it an act of genocide in 2010.',
+    history: [
+      {year:'1986', event:'Anfal campaign begins', desc:'The Iraqi government launched Operation Anfal, a series of military offensives targeting Kurdish civilian populations, villages, and peshmerga positions.', cat:'tragedy'},
+      {year:'March 16–17, 1988', event:'Chemical attack on Halabja', desc:'Iraqi aircraft dropped bombs filled with mustard gas, nerve agents (sarin, tabun), and cyanide compounds on Halabja and surrounding villages. Between 3,200 and 5,000 civilians died immediately.', cat:'tragedy'},
+      {year:'1988–1989', event:'Anfal final stages', desc:'Up to 100,000–182,000 Kurdish civilians are estimated to have been killed during the full Anfal campaign; 4,000+ villages were destroyed.', cat:'tragedy'},
+      {year:'1992', event:'International attention and memorialisation', desc:'Journalists and human rights organisations documented survivor testimonies; the first memorial was erected in Halabja.', cat:'political'},
+      {year:'1995', event:'Halabja Monument built', desc:'The Halabja Monument to Martyrs was constructed to honour the victims of the chemical attack and document the history.', cat:'landmark'},
+      {year:'2003', event:'Evidence secured after fall of regime', desc:'With the fall of Saddam Hussein, investigators accessed Ba\'athist archives providing documentary evidence of the Anfal orders.', cat:'political'},
+      {year:'2010', event:'Iraqi High Tribunal ruling', desc:'The Iraqi High Tribunal ruled that the Anfal campaign, including the Halabja massacre, constituted genocide against the Kurdish people.', cat:'political'},
+    ],
+    globalEvents: ['anfal-campaign'],
+    figures: [
+      {name:'Ali Hassan al-Majid', role:'Iraqi official — "Chemical Ali"', emoji:'⚠️', desc:'Director of the Anfal campaign; ordered the Halabja chemical attack. Executed in 2010 after conviction for genocide by the Iraqi High Tribunal.'},
+      {name:'Omaha Khorshid', role:'Survivor & witness', emoji:'👤', desc:'One of many survivors whose testimonies were documented by Human Rights Watch and international organisations. Survivors formed advocacy groups internationally.'},
+      {name:'Taimour Abdullah Ahmed', role:'Anfal survivor', emoji:'👤', desc:'One of the few documented survivors of the mass executions during the broader Anfal campaign; his testimony was central to international recognition.'},
+    ],
+    sources: [
+      {title:'Human Rights Watch — Genocide in Iraq: The Anfal Campaign Against the Kurds', detail:'New York, 1993. Based on 350+ survivor testimonies and captured Iraqi documents. Available: hrw.org'},
+      {title:'Middle East Watch — Whatever Happened to the Iraqi Kurds?', detail:'1991 investigative report. Detailed documentation of Ba\'ath regime attacks.'},
+      {title:'Iraqi High Tribunal — Anfal Judgment', detail:'June 2007 and January 2010. Legal ruling convicting senior Ba\'ath officials for genocide.'},
+      {title:'Tucker, Jonathan B. — War of Nerves: Chemical Weapons', detail:'Contextual reference on chemical agents used in the attack.'},
+    ]
+  },
+
+  {
+    id: 'duhok',
+    name: 'Duhok (Dihok)',
+    subtitle: 'Northern Kurdish city — gateway to Turkey and Syria',
+    lat: 36.867, lng: 42.989,
+    cat: 'landmark',
+    emoji: '🏔',
+    overview: `Duhok (Kurdish: Dihok) is the capital of the Duhok Governorate in the Kurdistan Region of Iraq, situated in a mountainous valley close to the borders of Turkey and Syria. The city has an ancient heritage — ancient Assyrian and Kurdish civilisations both inhabited this rugged terrain — and became a major flashpoint during the 1991 Kurdish uprising.`,
+    overview2: `During the Raperîn of 1991, Duhok was seized by Kurdish fighters, then lost to Iraqi counterattacks, triggering one of the largest refugee movements in modern history: nearly 1.5 million Kurds fled toward the Turkish and Iranian borders in bitter winter conditions. The humanitarian catastrophe prompted United Nations Security Council Resolution 688 and the creation of a safe haven under Operation Provide Comfort.`,
+    metaGrid: [
+      {key:'Kurdish name', val:'Dihok'},
+      {key:'Governorate', val:'Duhok'},
+      {key:'Region', val:'Northern KRI'},
+      {key:'Borders', val:'Turkey, Syria'},
+      {key:'1991 refugee exodus', val:'~1.5 million displaced'},
+      {key:'Operation', val:'Provide Comfort (1991)'},
+    ],
+    highlight: 'In spring 1991, the collapse of the Kurdish uprising led nearly 1.5 million Kurds to flee toward Turkey and Iran via Duhok in one of the largest refugee crises in modern Middle East history.',
+    history: [
+      {year:'Ancient period', event:'Assyrian and early Kurdish settlement', desc:'The mountainous region around Duhok was inhabited by ancient Assyrian communities, later becoming part of Kurdish tribal territories under Ottoman rule.', cat:'landmark'},
+      {year:'1914–1918', event:'WWI and Ottoman collapse', desc:'The collapse of the Ottoman Empire left Kurdish communities in the Duhok region stateless as the new Turkish Republic, Iraq, and Syria were formed under League of Nations mandates.', cat:'political'},
+      {year:'1923', event:'Treaty of Lausanne', desc:'The treaty redrew borders across the former Ottoman lands, failing to include a Kurdish homeland and dividing Kurdish populations among four states.', cat:'political'},
+      {year:'1961–1975', event:'Kurdish armed resistance', desc:'The mountains around Duhok provided cover for peshmerga fighters during the decades-long armed struggle against Iraqi governments.', cat:'revolt'},
+      {year:'March 1991', event:'Raperîn — Duhok seized and lost', desc:'Kurdish peshmerga captured Duhok in March 1991, but Iraqi Republican Guard forces retook the city within days. The collapse triggered a massive refugee exodus toward Turkey.', cat:'revolt'},
+      {year:'April 1991', event:'Refugee crisis — Operation Provide Comfort', desc:'The US, UK, and France established a no-fly zone and safe haven north of the 36th parallel, allowing displaced Kurds to return. UNSC Resolution 688 condemned Iraqi repression.', cat:'political'},
+      {year:'1992', event:'KRG administration', desc:'Under the Kurdish safe haven, Duhok came under the emerging Kurdistan Regional Government\'s administration.', cat:'political'},
+    ],
+    globalEvents: ['raperın-1991'],
+    figures: [
+      {name:'Mulla Mustafa Barzani', role:'Peshmerga Commander', emoji:'⭐', desc:'The Barzani tribal homeland is centred in the mountains near Duhok; Mulla Mustafa Barzani led decades of armed resistance from these highlands.'},
+    ],
+    sources: [
+      {title:'UNHCR — 1991 Kurdish Refugee Crisis documentation', detail:'UN High Commissioner for Refugees reports on the displacement of up to 2 million Kurds in spring 1991.'},
+      {title:'UNSC Resolution 688 (1991)', detail:'First UNSC resolution to define internal repression of a population as a threat to international peace; cited Iraqi attacks on Kurdish civilians.'},
+      {title:'McDowall, David — A Modern History of the Kurds', detail:'Tauris, 2004.'},
+    ]
+  },
+
+  {
+    id: 'zakho',
+    name: 'Zakho (Zaxo)',
+    subtitle: 'Northernmost city — ancient crossroads',
+    lat: 37.144, lng: 42.682,
+    cat: 'landmark',
+    emoji: '🌉',
+    overview: `Zakho, known in Kurdish as Zaxo, is the northernmost city of the Kurdistan Region of Iraq. It sits astride the Khabur River (a tributary of the Tigris) and has been a natural crossing point and trading hub since antiquity. Zakho\u2019s iconic ancient stone bridge — the Delal Bridge — is one of the oldest surviving bridges in Iraq, dating to the Roman or early Islamic period.`,
+    overview2: `The city was a focal point of Assyrian Christian heritage and Kurdish tribal life for centuries. During the 1991 refugee crisis, hundreds of thousands of Kurds passed through or near Zakho while fleeing toward the Turkish border. The US military established forward operating positions at Zakho during Operation Provide Comfort.`,
+    metaGrid: [
+      {key:'Kurdish name', val:'Zaxo'},
+      {key:'Governorate', val:'Duhok'},
+      {key:'River', val:'Khabur (Tigris tributary)'},
+      {key:'Historic bridge', val:'Delal Bridge (ancient)'},
+      {key:'Heritage', val:'Assyrian Christian, Kurdish'},
+      {key:'Role 1991', val:'Refugee corridor / US base'},
+    ],
+    highlight: 'The ancient Delal Bridge at Zakho, thought to be of Roman or early Islamic origin, spans the Khabur River and has connected Kurdish mountain communities for centuries.',
+    history: [
+      {year:'Ancient period', event:'Delal Bridge construction', desc:'The Delal Bridge, a multi-arch stone structure, was built across the Khabur River; its exact date is disputed but it is among the oldest intact bridges in the region.', cat:'landmark'},
+      {year:'7th–10th c. CE', event:'Assyrian Christian communities', desc:'Zakho hosted significant Assyrian Christian communities; the Church of the East had a strong presence in the surrounding valleys.', cat:'culture'},
+      {year:'16th–19th c.', event:'Ottoman frontier post', desc:'Zakho served as a military and administrative post on the Ottoman-Persian frontier, a contested borderland between two empires.', cat:'political'},
+      {year:'1991', event:'Refugee corridor and US military base', desc:'US and coalition forces used Zakho as a forward base during Operation Provide Comfort; hundreds of thousands of Kurdish refugees passed through the area on their way back from Turkey.', cat:'political'},
+    ],
+    globalEvents: ['raperın-1991'],
+    figures: [],
+    sources: [
+      {title:'Brock, Sebastian — The Syriac Heritage of the Church of the East', detail:'Contextual reference for Assyrian Christian history in the Zakho region.'},
+    ]
+  },
+
+  {
+    id: 'kirkuk',
+    name: 'Kirkuk (Kerkük)',
+    subtitle: 'Disputed city — historic Kurdish, Turkmen, and Arab community',
+    lat: 35.468, lng: 44.392,
+    cat: 'political',
+    emoji: '🛢',
+    overview: `Kirkuk is one of the most contested cities in Iraq, long claimed by Kurds who call it the "heart of Kurdistan" — Kerkük in Kurdish — and by Iraqi Arab and Turkmen communities as well. The city sits atop one of the world\u2019s largest oil fields, discovered in 1927, which has added enormous strategic and economic weight to longstanding ethnic tensions.`,
+    overview2: `Under Saddam Hussein\u2019s Ba\'ath regime, Kirkuk was subject to decades of Arabisation: Kurdish and Turkmen residents were forcibly expelled, replaced by Arab settlers, and the city was administratively transferred out of Kurdistan. Article 140 of Iraq\u2019s 2005 constitution mandated a referendum on Kirkuk\u2019s status, but it has never been held. Following the 2017 Kurdistan independence referendum, Iraqi forces retook Kirkuk from Kurdish peshmerga in October 2017.`,
+    metaGrid: [
+      {key:'Kurdish name', val:'Kerkük'},
+      {key:'Governorate', val:'Kirkuk'},
+      {key:'Oil field', val:'Discovered 1927'},
+      {key:'Arabisation', val:'1963–2003'},
+      {key:'Status', val:'Disputed (unresolved)'},
+      {key:'Art. 140', val:'Referendum never held'},
+    ],
+    highlight: 'Kirkuk has been the site of systematic demographic engineering: decades of forced displacement of Kurds and Turkmen under Ba\'athist Arabisation policies, the effects of which remain unresolved today.',
+    history: [
+      {year:'Ancient period', event:'Arrapha — ancient city', desc:'The ancient city of Arrapha occupied the site of modern Kirkuk; it was a centre of the Hurrian Kingdom of Mitanni (c. 1500 BCE) and appears in Assyrian records.', cat:'landmark'},
+      {year:'1927', event:'Oil discovered', desc:'The Iraq Petroleum Company struck oil near Kirkuk — one of the largest oil deposits in the world. This discovery immediately intensified international interest in the region.', cat:'political'},
+      {year:'1959', event:'Kirkuk massacre', desc:'Ethnic violence during a disputed military mutiny resulted in killings of Turkmen, Arab, and Kurdish civilians; the event deepened communal tensions.', cat:'tragedy'},
+      {year:'1963–2003', event:'Ba\'ath Arabisation policies', desc:'The Ba\'ath regime expelled hundreds of thousands of Kurds and Turkmen from Kirkuk, replacing them with Arab settlers in a deliberate attempt to change the city\'s demographic character.', cat:'tragedy'},
+      {year:'1988', event:'Anfal extended to Kirkuk villages', desc:'Villages in the Kirkuk region were targeted during the Anfal campaign; mass killings and deportations affected Kurdish communities.', cat:'tragedy'},
+      {year:'2003', event:'Kurdish peshmerga enter Kirkuk', desc:'Following the fall of the Ba\'ath regime, Kurdish forces entered Kirkuk; the city came under de facto KRG administration.', cat:'political'},
+      {year:'2017', event:'October crisis — Iraqi forces retake city', desc:'Following the Kurdistan independence referendum (Sep 2017), Iraqi forces and Popular Mobilisation Units retook Kirkuk from peshmerga in October 2017 without significant battle but ending KRG control.', cat:'political'},
+    ],
+    globalEvents: ['anfal-campaign'],
+    figures: [
+      {name:'Ibrahim Ahmad', role:'Kurdish Political Leader', emoji:'👤', desc:'Key PUK political figure from Kirkuk background; instrumental in articulating Kurdish claims to Kirkuk in post-2003 negotiations.'},
+    ],
+    sources: [
+      {title:'International Crisis Group — Iraq and the Kurds: The Brewing Battle over Kirkuk', detail:'ICG Report #56, 2006. Detailed analysis of territorial and demographic disputes.'},
+      {title:'Human Rights Watch — Claims in Conflict: Reversing Ethnic Cleansing in Northern Iraq', detail:'2004. Documents Ba\'athist Arabisation and post-2003 realities.'},
+      {title:'Article 140, Iraqi Constitution 2005', detail:'Mandated normalization, census, and referendum for disputed territories including Kirkuk.'},
+    ]
+  },
+
+  {
+    id: 'amadiyah',
+    name: 'Amadiyah (Amêdî)',
+    subtitle: 'Mountain citadel city — ancient Assyrian heritage',
+    lat: 37.090, lng: 43.487,
+    cat: 'landmark',
+    emoji: '⛰',
+    overview: `Amadiyah — Amêdî in Kurdish — is a remarkable hilltop city in the Duhok Governorate, perched atop a flat-topped mountain plateau some 1,400 metres above sea level. The city can only be accessed via a narrow pass cut into the cliff face. Amadiyah was a provincial capital of the Assyrian Empire, a seat of the Jewish community of Kurdistan for centuries, and a stronghold of Kurdish principalities under the Ottomans.`,
+    overview2: `The plateau city\u2019s geography made it nearly impregnable: it was never successfully besieged throughout most of its history. Today it is a popular heritage tourism destination, with Assyrian, Jewish, Islamic, and Kurdish cultural sites coexisting on its ancient plateau.`,
+    metaGrid: [
+      {key:'Kurdish name', val:'Amêdî'},
+      {key:'Elevation', val:'~1,400 m ASL'},
+      {key:'Governorate', val:'Duhok'},
+      {key:'Heritage', val:'Assyrian, Jewish, Kurdish'},
+      {key:'Era', val:'1st millennium BCE onward'},
+      {key:'Status', val:'Heritage city, tourism site'},
+    ],
+    highlight: 'Amadiyah\'s ancient Jewish community — one of the oldest in the world — traced their origin to the Assyrian exile (722 BCE). Kurdish Jews from Amadiyah largely emigrated to Israel in the 1950s.',
+    history: [
+      {year:'8th c. BCE', event:'Assyrian period — founding of Amadanu', desc:'The city was known as Amadanu in Assyrian times; it served as an administrative post in the Assyrian Empire under Sargon II and his successors.', cat:'landmark'},
+      {year:'722 BCE onwards', event:'Jewish community established', desc:'Following the Assyrian conquest of Israel, Jewish exiles were resettled in the Amadiyah region; a continuous Jewish community persisted for nearly 2,700 years.', cat:'culture'},
+      {year:'Ottoman period', event:'Kurdish emirate — Soran principality', desc:'The Soran Kurdish emirate ruled from the Amadiyah region; the principality was a significant cultural patron under Mir Muhammad (the "Blind Prince", 1820s–30s).', cat:'political'},
+      {year:'1950–1951', event:'Jewish emigration — Operation Ezra & Nehemiah', desc:'Most of the ancient Jewish Kurdish community of Amadiyah emigrated to Israel under the Iraqi Jewish emigration programme, ending millennia of continuous Jewish presence.', cat:'culture'},
+    ],
+    globalEvents: [],
+    figures: [
+      {name:'Mir Muhammad of Rawanduz', role:'Kurdish Emir', emoji:'⭐', desc:'Known as the "Blind Prince," he briefly unified much of Kurdistan under the Soran principality in the 1830s before being defeated by Ottoman forces.'},
+    ],
+    sources: [
+      {title:'Brauer, Erich — The Jews of Kurdistan', detail:'Edited by Raphael Patai. Wayne State UP, 1993. Ethnographic and historical study of Kurdish Jewish communities.'},
+      {title:'Rich, Claudius James — Narrative of a Residence in Koordistan', detail:'London, 1836. Early European account of Kurdish principalities and the Amadiyah region.'},
+    ]
+  },
+
+  {
+    id: 'mahabad',
+    name: 'Mahabad (Sine)',
+    subtitle: 'Capital of the 1946 Kurdish Republic',
+    lat: 36.762, lng: 45.722,
+    cat: 'political',
+    emoji: '📜',
+    overview: `Mahabad is a Kurdish-majority city in the West Azerbaijan province of Iran. Its place in Kurdish history is singular: for eleven months in 1946, it was the capital of the Republic of Mahabad — the first Kurdish republic in history, established under the presidency of Qazi Muhammad and backed by Soviet influence in post-WWII Iran.`,
+    overview2: `The republic issued the first Kurdish-language newspaper, trained Kurdish armed forces, and gave Mulla Mustafa Barzani — who had fled from Iraq — a military command. When Soviet forces withdrew in 1946 under American and British pressure, the Iranian army quickly retook the city. Qazi Muhammad was hanged in the city\u2019s main square in March 1947. The republic lasted only 11 months but remains a foundational moment in Kurdish political memory.`,
+    metaGrid: [
+      {key:'Country', val:'Iran (West Azerbaijan)'},
+      {key:'Kurdish name', val:'Mahabad / Sine'},
+      {key:'Republic dates', val:'Jan–Dec 1946'},
+      {key:'President', val:'Qazi Muhammad'},
+      {key:'Duration', val:'11 months'},
+      {key:'Legacy', val:'First Kurdish republic'},
+    ],
+    highlight: 'The Republic of Mahabad (1946) was the first independent Kurdish state in history. Its president Qazi Muhammad was publicly executed by the Iranian state in March 1947 after the republic collapsed.',
+    history: [
+      {year:'1941–1945', event:'Soviet occupation of northern Iran', desc:'During WWII, Soviet forces occupied northern Iran, creating political space for Kurdish and Azerbaijani autonomy movements in the region.', cat:'political'},
+      {year:'January 22, 1946', event:'Republic of Mahabad proclaimed', desc:'Qazi Muhammad proclaimed the Republic of Mahabad, the first Kurdish republic in history; the Soviet Union provided political and material support.', cat:'political'},
+      {year:'1946', event:'Kurdish institutions established', desc:'The republic created a Kurdish army, opened Kurdish-language schools, published the first Kurdish newspaper (Kurdistan), and established a Kurdish civil service.', cat:'culture'},
+      {year:'November 1946', event:'Soviet withdrawal', desc:'Under US and British pressure, the USSR withdrew support; the Azerbaijani People\'s Government (a parallel Soviet-backed state) also collapsed.', cat:'political'},
+      {year:'December 1946', event:'Iranian army retakes Mahabad', desc:'Iranian forces entered the city unopposed; Qazi Muhammad surrendered to prevent further bloodshed.', cat:'political'},
+      {year:'March 31, 1947', event:'Qazi Muhammad executed', desc:'Iranian authorities publicly hanged Qazi Muhammad and two of his relatives in Mahabad\'s Chuwarchira Square, the same location where the republic had been proclaimed.', cat:'tragedy'},
+    ],
+    globalEvents: [],
+    figures: [
+      {name:'Qazi Muhammad', role:'President, Republic of Mahabad', emoji:'⭐', desc:'Kurdish judge, community leader, and politician who proclaimed and led the Republic of Mahabad in 1946; executed by Iran in 1947. Regarded as a national hero across Kurdish communities.'},
+      {name:'Mulla Mustafa Barzani', role:'Military Commander in the Republic', emoji:'👤', desc:'Led a contingent of Iraqi Kurdish peshmerga in support of the Mahabad Republic; fled to the USSR after its collapse, returning to Iraq in 1958.'},
+    ],
+    sources: [
+      {title:'Eagleton, William — The Kurdish Republic of 1946', detail:'Oxford UP, 1963. The foundational scholarly study of the Mahabad Republic, based on firsthand accounts.'},
+      {title:'McDowall, David — A Modern History of the Kurds', detail:'Tauris, 2004. Chapter on the Mahabad Republic and postwar Kurdish politics.'},
+      {title:'Ghazi Muhammad — collected speeches and writings', detail:'Archived at Kurdish cultural institutions in Sulaymaniyah and diaspora libraries.'},
+    ]
+  },
+
+  {
+    id: 'penjwin',
+    name: 'Penjwin & Peshmerga Highlands',
+    subtitle: '1991 Raperîn uprising — mountain stronghold',
+    lat: 35.621, lng: 46.128,
+    cat: 'revolt',
+    emoji: '⚔',
+    overview: `The rugged highlands around Penjwin and the Sulaymaniyah border region with Iran formed the base of operations for Kurdish peshmerga forces during the 1991 uprising (Raperîn) and in many earlier phases of armed resistance against the Iraqi state. The mountains of southern Iraqi Kurdistan — deeply folded limestone ranges — have sheltered Kurdish fighters across generations of conflict.`,
+    overview2: `Penjwin sits near the Iranian border, a crossing point used by peshmerga during the Iran–Iraq War (when Iran allowed Iraqi Kurds access) and during the 1991 exodus. The region also holds memorials to Anfal victims from surrounding villages. The word peshmerga (پێشمەرگە) means literally "those who face death" — it is the term for Kurdish armed fighters and today is also the name of the official military force of the Kurdistan Region.`,
+    metaGrid: [
+      {key:'Governorate', val:'Sulaymaniyah'},
+      {key:'Terrain', val:'Mountain border highlands'},
+      {key:'Border', val:'Iran'},
+      {key:'Historical role', val:'Peshmerga base, exile route'},
+      {key:'Peshmerga', val:'"Those who face death"'},
+      {key:'Key events', val:'1961–75 war, 1991 Raperîn'},
+    ],
+    highlight: 'The 1991 Raperîn (uprising) began on March 5, 1991, in Rania — near Sulaymaniyah — and spread across all of Iraqi Kurdistan within days, temporarily driving out Ba\'athist forces before a brutal crackdown.',
+    history: [
+      {year:'1961–1975', event:'First and Second Kurdish–Iraqi war', desc:'Peshmerga fighters used the Iranian border highlands as rear bases and escape routes during the long armed struggle against Iraq. The 1975 Algiers Accord between Iraq and Iran ended the first major phase.', cat:'revolt'},
+      {year:'1986–1989', event:'Anfal campaign', desc:'Villages in the highlands east of Sulaymaniyah, including the Penjwin area, were attacked during Anfal; thousands of civilians were killed or forcibly displaced.', cat:'tragedy'},
+      {year:'March 5, 1991', event:'Raperîn begins in Rania', desc:'The 1991 Kurdish uprising (Raperîn, meaning "uprising" in Kurdish) sparked in the town of Rania and spread rapidly. Peshmerga and civilian fighters seized town after town across northern Iraq.', cat:'revolt'},
+      {year:'March–April 1991', event:'Iraqi counterattack and exodus', desc:'The Republican Guard retook Kurdish cities; in a matter of days nearly 1.5–2 million Kurds fled toward Turkey and Iran, many through the mountain passes near Penjwin.', cat:'revolt'},
+      {year:'April 1991', event:'UN safe haven established', desc:'UNSC Resolution 688 and Operation Provide Comfort created a no-fly zone and safe haven north of the 36th parallel, allowing displaced Kurds to return.', cat:'political'},
+    ],
+    globalEvents: ['raperın-1991','anfal-campaign'],
+    figures: [
+      {name:'Kosrat Rasul Ali', role:'PUK Peshmerga Commander', emoji:'👤', desc:'Senior PUK military commander who led peshmerga operations during the 1991 uprising in the Sulaymaniyah region.'},
+      {name:'Mam Jalal (Jalal Talabani)', role:'PUK Secretary-General', emoji:'⭐', desc:'Led the PUK politically and militarily during the 1991 Raperîn from bases in this region and neighbouring Iran.'},
+    ],
+    sources: [
+      {title:'Hiro, Dilip — Desert Shield to Desert Storm', detail:'Routledge, 1992. Covers the Gulf War and its aftermath including the Kurdish uprising.'},
+      {title:'Stansfield, Gareth — Iraqi Kurdistan: Political Development and Emergent Democracy', detail:'Routledge, 2003. Academic analysis of peshmerga and the KRG\'s emergence.'},
+    ]
+  },
+
+  {
+    id: 'chaldiran',
+    name: 'Chaldiran (Çaldiran)',
+    subtitle: 'Battle of Chaldiran 1514 — Ottoman–Safavid division of Kurdistan',
+    lat: 39.162, lng: 43.953,
+    cat: 'battle',
+    emoji: '🛡',
+    overview: `The Battle of Chaldiran (23 August 1514) was a decisive confrontation between the Ottoman Empire under Sultan Selim I and the Safavid Empire under Shah Ismail I. The battle took place on the plain of Chaldiran in present-day northwestern Iran, near modern Maku. Ottoman forces — with superior artillery — won a decisive victory, halting Safavid westward expansion.`,
+    overview2: `For Kurds, Chaldiran was of immense historical significance: Kurdish tribal leaders, particularly Idris Bitlisi, strategically aligned with the Ottomans, and in the aftermath of the battle, the Ottomans granted Kurdish princes autonomy in their ancestral territories under the 1515 Treaty of Amasya. This arrangement formalised a patchwork of Kurdish emirates and principalities across much of the region for the next three centuries — but the line drawn between Ottoman and Safavid power also began the division of Kurdish populations between two empires, a legacy that persists in the modern Kurdish division between Iraq, Turkey, Syria, and Iran.`,
+    metaGrid: [
+      {key:'Date', val:'23 August 1514'},
+      {key:'Belligerents', val:'Ottoman Empire vs Safavid Persia'},
+      {key:'Kurdish diplomat', val:'Idris Bitlisi'},
+      {key:'Ottoman sultan', val:'Selim I ("the Grim")'},
+      {key:'Safavid shah', val:'Ismail I'},
+      {key:'Outcome for Kurds', val:'Autonomy under Ottomans; division of Kurdish lands'},
+    ],
+    highlight: 'Idris Bitlisi, the Kurdish scholar-diplomat, negotiated Kurdish autonomous emirates under Ottoman suzerainty after Chaldiran — a rare moment of formalised Kurdish political recognition, though it simultaneously began the fateful division of the Kurdish world between two empires.',
+    history: [
+      {year:'1501', event:'Safavid Empire founded — Shah Ismail I', desc:'The Safavid dynasty established Shia Islam as the official state religion of Persia, deepening the conflict with Sunni Ottomans and drawing Kurdish communities — mostly Sunni — closer to the Ottomans.', cat:'political'},
+      {year:'1514', event:'Battle of Chaldiran', desc:'Ottoman artillery decisively defeated the Safavid cavalry on the Chaldiran plain. Kurdish tribal leaders, advised by Idris Bitlisi, had aligned with the Ottomans.', cat:'battle'},
+      {year:'1515', event:'Kurdish emirates formalised', desc:'The Treaty of Amasya and subsequent Ottoman arrangements gave Kurdish princes autonomous rule in their territories in exchange for military loyalty to the Sultan.', cat:'political'},
+      {year:'16th–19th c.', event:'Era of Kurdish principalities', desc:'Kurdish emirs ruled semi-independently across the Ottoman borderlands: the Baban emirate (near Sulaymaniyah), the Soran emirate (near Rawanduz/Amadiyah), the Bohtan emirate, and many others.', cat:'political'},
+      {year:'1847', event:'Last Kurdish emirate dissolved', desc:'The Ottoman Empire, pursuing centralisation (Tanzimat reforms), suppressed the remaining Kurdish principalities. Sheikh Ubeydullah\'s revolt (1880) was a subsequent major Kurdish uprising.', cat:'revolt'},
+    ],
+    globalEvents: ['chaldiran-1514'],
+    figures: [
+      {name:'Idris Bitlisi', role:'Kurdish Scholar & Diplomat', emoji:'📜', desc:'Kurdish intellectual and historian who served the Safavids before joining the Ottomans; his diplomatic work secured Kurdish autonomous emirates after Chaldiran. Author of Hasht Bihisht (Eight Paradises).'},
+      {name:'Selim I', role:'Ottoman Sultan', emoji:'👑', desc:'Known as "Selim the Grim," his victory at Chaldiran extended Ottoman control over Anatolia and much of Kurdistan.'},
+    ],
+    sources: [
+      {title:'Gündoğdu, Ahmet — Idris-i Bitlisi and the Kurdish–Ottoman Alliance', detail:'Turkish historiography on the post-Chaldiran Kurdish political arrangements.'},
+      {title:'Minorsky, Vladimir — "The Kurds: Notes and Impressions"', detail:'BSOAS, 1949. Classic scholarly reference on Kurdish principalities.'},
+      {title:'Savory, Roger — Iran Under the Safavids', detail:'Cambridge UP, 1980.'},
+    ]
+  },
+
+  {
+    id: 'rania',
+    name: 'Rania (Ranye)',
+    subtitle: 'Birthplace of the 1991 Raperîn uprising',
+    lat: 36.254, lng: 44.882,
+    cat: 'revolt',
+    emoji: '⚔',
+    overview: `Rania — Ranye in Kurdish — is a small city in the Sulaymaniyah Governorate that holds an outsized place in modern Kurdish history: it was here, on 5 March 1991, that the Raperîn (uprising) began. A crowd of Kurdish civilians attacked the local Ba\'ath party headquarters following news of the Gulf War ceasefire and Saddam Hussein\u2019s political weakness. Within days, the uprising had spread to every city across Iraqi Kurdistan.`,
+    overview2: `The Raperîn (literally "uprising" in Sorani Kurdish) was a spontaneous popular revolt that succeeded in liberating virtually all of the Kurdish north within about two weeks. Peshmerga fighters and unarmed civilians alike rose against Ba\'athist forces. The Iraqi Republican Guard\u2019s brutal counterattack in March–April 1991 forced the largest refugee exodus in modern Middle Eastern history, prompting international intervention and ultimately leading to the Kurdish safe haven and the foundation of the Kurdistan Regional Government.`,
+    metaGrid: [
+      {key:'Kurdish', val:'Ranye'},
+      {key:'Governorate', val:'Sulaymaniyah'},
+      {key:'Raperîn start', val:'5 March 1991'},
+      {key:'What sparked it', val:'Gulf War ceasefire; Ba\'ath HQ attacked'},
+      {key:'Cities liberated', val:'All major KRI cities by Mar 20'},
+      {key:'Iraqi response', val:'Republican Guard; chemical threat'},
+    ],
+    highlight: 'The Raperîn of March 1991 was the largest popular Kurdish uprising in history. Within two weeks, peshmerga and civilians had liberated all major Kurdish cities — an achievement that laid the groundwork for the Kurdistan Regional Government.',
+    history: [
+      {year:'Feb 28, 1991', event:'Gulf War ceasefire', desc:'Coalition forces halted after 100 hours of ground war; Saddam Hussein remained in power but the regime appeared politically weakened. US President George H.W. Bush called on Iraqis to rise up.', cat:'political'},
+      {year:'March 5, 1991', event:'Raperîn begins in Rania', desc:'Civilians in Rania attacked the Ba\'ath party headquarters, initiating the uprising. The spark spread with extraordinary speed along the mountains and valleys of Kurdistan.', cat:'revolt'},
+      {year:'March 6–20, 1991', event:'Kurdistan liberated city by city', desc:'Peshmerga fighters and civilian forces seized Sulaymaniyah (March 7), Duhok (March 10), Erbil (March 11), Zakho, Amadiyah, and virtually all other towns. The Kurdish flag flew across the north.', cat:'revolt'},
+      {year:'Late March 1991', event:'Republican Guard counterattack', desc:'Saddam Hussein\'s Republican Guard, freed from the southern theatre, moved north with tanks and artillery. Coalition forces did not intervene; Kurdish defenders were outgunned. Cities fell rapidly.', cat:'revolt'},
+      {year:'March–April 1991', event:'Refugee catastrophe', desc:'Nearly 1.5–2 million Kurds fled toward Turkish and Iranian borders in bitter mountain conditions. Thousands died of exposure, hunger, and disease in the mountains.', cat:'tragedy'},
+      {year:'April 5, 1991', event:'UNSC Resolution 688', desc:'The UN Security Council passed Resolution 688, demanding Iraq halt repression of its civilian population — the first such resolution to treat internal repression as a threat to international peace.', cat:'political'},
+      {year:'April 1991', event:'Operation Provide Comfort & safe haven', desc:'The US, UK, France, and others established a no-fly zone north of the 36th parallel and deployed forces to protect displaced Kurds, allowing their return.', cat:'political'},
+      {year:'May 1992', event:'First Kurdistan Region elections', desc:'The Kurdistan Front held free elections, forming the Kurdistan Regional Government. The legacy of Raperîn had created the political space for self-governance.', cat:'political'},
+    ],
+    globalEvents: ['raperın-1991'],
+    figures: [
+      {name:'Jalal Talabani', role:'PUK Secretary-General', emoji:'⭐', desc:'Led PUK forces and diplomacy during and after the Raperîn; his negotiations with coalition governments helped secure the safe haven.'},
+      {name:'Masoud Barzani', role:'KDP President', emoji:'👤', desc:'Led KDP peshmerga forces during the uprising; coordinated with Talabani\'s PUK in joint operations across the north.'},
+      {name:'Nawshirwan Mustafa', role:'PUK Deputy Commander', emoji:'👤', desc:'Commanded PUK peshmerga in the field during the Raperîn and contributed to the subsequent KRG administration.'},
+    ],
+    sources: [
+      {title:'Hiro, Dilip — Desert Shield to Desert Storm', detail:'Routledge, 1992.'},
+      {title:'Galbraith, Peter W. — The End of Iraq', detail:'Simon & Schuster, 2006. First-hand account; Galbraith was a US Senate staffer who documented chemical weapons attacks and advocated for Kurds.'},
+      {title:'Human Rights Watch — Endless Torment: The 1991 Uprising in Iraq and its Aftermath', detail:'New York, 1992.'},
+      {title:'UNSC Resolution 688 — S/RES/688 (1991)', detail:'Official UN document.'},
+    ]
+  },
+
+  {
+    id: 'newroz-site',
+    name: 'Newroz — Kurdish New Year',
+    subtitle: 'Cultural & national celebration — March 21',
+    lat: 36.85, lng: 43.45,
+    cat: 'culture',
+    emoji: '🎊',
+    overview: `Newroz (also spelled Nowruz, meaning "New Day" in Kurdish and Persian) is the Kurdish and Iranian New Year celebrated on March 21 — the spring equinox. For Kurds, Newroz carries deep cultural, national, and mythological significance beyond its astronomical origin. It is associated with the legend of the blacksmith Kawa, who led a rebellion against the tyrannical king Zahak (Dehak), lighting bonfires on the mountains to signal liberation.`,
+    overview2: `In the context of Kurdish national identity, Newroz has often been a flash point: the Turkish state banned public Newroz celebrations for decades; in the 1980s and 90s, celebrating Newroz in Turkey was grounds for arrest. In Iraqi Kurdistan under Saddam Hussein, public gatherings on Newroz were dangerous. Today it is a public holiday in the Kurdistan Region, northern Syria, and Iran, and is celebrated by Kurdish communities worldwide.`,
+    metaGrid: [
+      {key:'Date', val:'March 21 (Spring Equinox)'},
+      {key:'Meaning', val:'"New Day" in Kurdish'},
+      {key:'Symbol', val:'Fire, bonfires on hilltops'},
+      {key:'Legend', val:'Kawa the Blacksmith & Zahak'},
+      {key:'Status', val:'Public holiday — KRI, Iran'},
+      {key:'UNESCO', val:'Inscribed on Intangible Heritage list'},
+    ],
+    highlight: 'In 1992, the first free Newroz in Iraqi Kurdistan after the Raperîn became a massive public celebration of cultural survival — millions gathered at bonfires across the mountains to celebrate both the new year and their newly won autonomy.',
+    history: [
+      {year:'Ancient', event:'Origins of Newroz / Nowruz', desc:'The festival is at least 3,000 years old; it was observed in ancient Zoroastrian tradition and is described in the Shahnameh (Book of Kings) of Ferdowsi in the Kawa legend.', cat:'culture'},
+      {year:'1925', event:'Newroz banned in Turkey', desc:'The new Turkish Republic suppressed Kurdish cultural identity; Newroz celebrations were banned or restricted for decades in Turkey, with arrests of participants.', cat:'political'},
+      {year:'1988', event:'Newroz under Anfal shadow', desc:'In the final year of the Anfal campaign, Newroz celebrations in Iraqi Kurdistan were impossible; communities were devastated by military operations.', cat:'tragedy'},
+      {year:'1992', event:'First free Newroz in Iraqi Kurdistan', desc:'After the safe haven was established, the 1992 Newroz became the first free celebration in Iraqi Kurdistan; millions gathered on hilltops in a moment of profound cultural significance.', cat:'culture'},
+      {year:'2009', event:'UNESCO inscription', detail:'Nowruz was inscribed on the UNESCO Representative List of the Intangible Cultural Heritage of Humanity, recognising its importance across multiple cultures.', cat:'culture'},
+    ],
+    globalEvents: [],
+    figures: [
+      {name:'Kawa the Blacksmith', role:'Mythological hero', emoji:'🔨', desc:'According to Kurdish legend, Kawa defeated the tyrant Zahak, who had kept the Kurdish people enslaved. He lit a fire atop the mountains to signal liberation — the origin of the Newroz bonfire tradition.'},
+    ],
+    sources: [
+      {title:'UNESCO — Nowruz: Intangible Cultural Heritage', detail:'Official inscription record: ich.unesco.org'},
+      {title:'van Bruinessen, Martin — Agha, Shaikh and State: The Social and Political Structures of Kurdistan', detail:'Zed Books, 1992. Foundational study of Kurdish social and cultural life.'},
+    ]
+  },
+];
+
+/* global events for timeline */
+const GLOBAL_EVENTS = [
+  {id:'chaldiran-1514', year:1514, label:'Battle of Chaldiran', cat:'battle'},
+  {id:'mahabad-1946', year:1946, label:'Republic of Mahabad', cat:'political'},
+  {id:'kdp-founded', year:1946, label:'KDP Founded', cat:'political'},
+  {id:'algiers-1975', year:1975, label:'Algiers Accord', cat:'political'},
+  {id:'puk-founded', year:1975, label:'PUK Founded', cat:'political'},
+  {id:'anfal-campaign', year:1988, label:'Anfal Campaign', cat:'tragedy'},
+  {id:'halabja-1988', year:1988, label:'Halabja Attack', cat:'tragedy'},
+  {id:'raperın-1991', year:1991, label:'Raperîn Uprising', cat:'revolt'},
+  {id:'safehaven-1991', year:1991, label:'Safe Haven / Op. Provide Comfort', cat:'political'},
+  {id:'krg-election', year:1992, label:'First KRG Elections', cat:'political'},
+  {id:'saddam-fall', year:2003, label:'Fall of Ba\'ath Regime', cat:'political'},
+  {id:'krg-constitution', year:2005, label:'Iraqi Constitution – KRG', cat:'political'},
+  {id:'isis-2014', year:2014, label:'ISIS advances — Peshmerga defence', cat:'battle'},
+  {id:'kirkuk-2017', year:2017, label:'Kirkuk — Oct Crisis', cat:'political'},
+];
+
+/* ═══════════════════════════════════════════════════════════
+   MAP INIT
+═══════════════════════════════════════════════════════════ */
+const KURDISTAN_BOUNDS = [[34.5, 41.5],[38.5, 47.0]];
+const map = L.map('map', {
+  center: [36.5, 44.2],
+  zoom: 7,
+  zoomControl: true,
+  maxBounds: [[30, 35],[43,55]],
+  minZoom: 5,
+  maxZoom: 15,
+});
+
+// Light tile
+const lightTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 18,
+}).addTo(map);
+
+// Dark tile
+const darkTiles = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18,
+});
+
+// Kurdistan region highlight polygon (approximate)
+const kurdistanPolygon = L.polygon([
+  [37.4,41.8],[37.8,42.5],[38.1,43.0],[38.3,44.0],[37.9,44.8],
+  [37.5,45.5],[37.0,46.0],[36.5,46.2],[35.8,46.2],[35.2,46.3],
+  [34.8,45.7],[34.5,44.9],[34.7,43.8],[35.0,42.7],[35.5,42.0],
+  [36.0,41.7],[36.6,41.5],[37.1,41.6]
+], {
+  color: '#C9A96E',
+  weight: 2,
+  opacity: 0.5,
+  fillColor: '#C9A96E',
+  fillOpacity: 0.06,
+  dashArray: '6,4',
+}).addTo(map);
+
+/* ─── MARKERS ─────────────────────────────────────────────── */
+const markers = {};
+let activeFilter = 'all';
+
+function createPulseIcon(cat) {
+  const inner = document.createElement('div');
+  inner.className = `pulse-inner ${cat}`;
+  const ring = document.createElement('div');
+  ring.className = `pulse-ring ${cat}`;
+  const wrap = document.createElement('div');
+  wrap.className = 'pulse-marker';
+  wrap.appendChild(ring);
+  wrap.appendChild(inner);
+  return L.divIcon({html: wrap.outerHTML, className:'', iconSize:[14,14], iconAnchor:[7,7]});
+}
+
+function addMarkers() {
+  LOCATIONS.forEach(loc => {
+    const marker = L.marker([loc.lat, loc.lng], {
+      icon: createPulseIcon(loc.cat),
+      title: loc.name,
+    }).addTo(map);
+
+    const popup = L.popup({closeButton:false, maxWidth:220, className:'', offset:[0,-8]}).setContent(`
+      <div class="popup-title">${loc.emoji} ${loc.name}</div>
+      <div class="popup-sub">${loc.subtitle}</div>
+      <span class="tag tag-year">${loc.cat.toUpperCase()}</span>
+      <button class="popup-btn" onclick="openPanel('${loc.id}')">Explore History →</button>
+    `);
+    marker.bindPopup(popup);
+    marker.on('click', () => { openPanel(loc.id); map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 8), {animate:true}); });
+    markers[loc.id] = marker;
+  });
+}
+addMarkers();
+
+/* ─── FILTER ──────────────────────────────────────────────── */
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.cat;
+    LOCATIONS.forEach(loc => {
+      const m = markers[loc.id];
+      if (!m) return;
+      if (activeFilter === 'all' || loc.cat === activeFilter) {
+        m.addTo(map);
+      } else {
+        map.removeLayer(m);
+      }
+    });
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   PANEL
+═══════════════════════════════════════════════════════════ */
+const catColors = {
+  landmark:'cat-landmark', revolt:'cat-revolt', battle:'cat-battle',
+  political:'cat-political', tragedy:'cat-tragedy', culture:'cat-culture'
+};
+const catLabels = {
+  landmark:'🏛 Landmark', revolt:'⚔ Revolt / Uprising', battle:'🛡 Battle',
+  political:'📜 Political', tragedy:'🕊 Tragedy', culture:'🎭 Culture'
+};
+
+function openPanel(locId) {
+  const loc = LOCATIONS.find(l => l.id === locId);
+  if (!loc) return;
+
+  // Header
+  document.getElementById('panel-badge').className = `panel-cat-badge ${catColors[loc.cat]}`;
+  document.getElementById('panel-badge').textContent = catLabels[loc.cat] || loc.cat;
+  document.getElementById('panel-title').textContent = loc.name;
+  document.getElementById('panel-subtitle').textContent = loc.subtitle;
+
+  // Overview
+  document.getElementById('tab-overview').innerHTML = `
+    <div class="section-label">About</div>
+    <p class="prose">${loc.overview}</p>
+    ${loc.overview2 ? `<p class="prose">${loc.overview2}</p>` : ''}
+    ${loc.highlight ? `<div class="highlight-box"><p>${loc.highlight}</p></div>` : ''}
+    ${loc.metaGrid ? `
+      <div class="section-label">Key Facts</div>
+      <div class="meta-grid">${loc.metaGrid.map(m => `
+        <div class="meta-cell"><div class="key">${m.key}</div><div class="val">${m.val}</div></div>
+      `).join('')}</div>` : ''}
+  `;
+
+  // History / Timeline
+  document.getElementById('tab-history').innerHTML = `
+    <div class="section-label">Chronological History</div>
+    <div class="timeline">
+      ${(loc.history || []).map((h,i) => `
+        <div class="tl-item" style="animation-delay:${i*0.05}s">
+          <div class="tl-dot ${h.cat || loc.cat}"></div>
+          <div class="tl-year">${h.year}</div>
+          <div class="tl-event">${h.event}</div>
+          <div class="tl-desc">${h.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Events
+  const allEvents = (loc.history || []).concat((loc.globalEvents || []).map(ge => {
+    const found = GLOBAL_EVENTS.find(e => e.id === ge);
+    return found ? {year: found.year, event: found.label, desc:'See global historical timeline.', cat: found.cat} : null;
+  }).filter(Boolean));
+  document.getElementById('tab-events').innerHTML = allEvents.length ? `
+    <div class="section-label">Connected Historical Events</div>
+    <div class="timeline">
+      ${allEvents.sort((a,b) => parseInt(a.year) - parseInt(b.year)).map((h,i) => `
+        <div class="tl-item" style="animation-delay:${i*0.05}s">
+          <div class="tl-dot ${h.cat || ''}"></div>
+          <div class="tl-year">${h.year}</div>
+          <div class="tl-event">${h.event}</div>
+          <div class="tl-desc">${h.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<p class="prose" style="color:var(--muted)">No connected events recorded.</p>';
+
+  // Figures
+  document.getElementById('tab-figures').innerHTML = (loc.figures && loc.figures.length) ? `
+    <div class="section-label">Notable Figures</div>
+    ${loc.figures.map(f => `
+      <div class="figure-card">
+        <div class="fig-avatar">${f.emoji}</div>
+        <div class="fig-info">
+          <div class="fig-role">${f.role}</div>
+          <h4>${f.name}</h4>
+          <p>${f.desc}</p>
+        </div>
+      </div>
+    `).join('')}
+  ` : '<p class="prose" style="color:var(--muted)">No notable figures recorded for this location.</p>';
+
+  // Sources
+  document.getElementById('tab-sources').innerHTML = (loc.sources && loc.sources.length) ? `
+    <div class="section-label">Sources &amp; References</div>
+    ${loc.sources.map(s => `
+      <div class="source-item"><strong>${s.title}</strong><br>${s.detail}</div>
+    `).join('')}
+    <div style="margin-top:16px;padding:12px;border-radius:var(--r);background:var(--cream);font-size:12px;color:var(--muted)">
+      <strong>Note:</strong> This atlas presents historical information for educational purposes from a Kurdish historical perspective. 
+      Events are documented from multiple scholarly sources. Readers are encouraged to consult the referenced works directly for complete accounts.
+    </div>
+  ` : '<p class="prose" style="color:var(--muted)">No sources listed.</p>';
+
+  // Switch to overview tab
+  switchTab('overview');
+
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('panel-body').scrollTop = 0;
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === `tab-${tabId}`));
+}
+
+document.getElementById('panel-close').addEventListener('click', closePanel);
+document.querySelectorAll('.ptab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════════════════════ */
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+
+function buildSearchIndex() {
+  const idx = [];
+  LOCATIONS.forEach(loc => {
+    idx.push({id:loc.id, name:loc.name, sub:loc.subtitle, cat:loc.cat, lat:loc.lat, lng:loc.lng});
+    (loc.history || []).forEach(h => idx.push({id:loc.id, name:h.event, sub:`${h.year} — ${loc.name}`, cat:h.cat||loc.cat, lat:loc.lat, lng:loc.lng}));
+    (loc.figures || []).forEach(f => idx.push({id:loc.id, name:f.name, sub:f.role+' — '+loc.name, cat:loc.cat, lat:loc.lat, lng:loc.lng}));
+  });
+  return idx;
+}
+const searchIndex = buildSearchIndex();
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  if (!q || q.length < 2) { searchResults.style.display = 'none'; return; }
+  const hits = searchIndex.filter(i => i.name.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q)).slice(0,8);
+  if (!hits.length) { searchResults.style.display = 'none'; return; }
+  searchResults.innerHTML = hits.map(h => `
+    <div class="sr-item" onclick="handleSearchHit('${h.id}','${h.lat}','${h.lng}')">
+      <strong>${highlight(h.name, q)}</strong>
+      <span class="sr-cat">${h.cat} · ${h.sub}</span>
+    </div>
+  `).join('');
+  searchResults.style.display = 'block';
+});
+
+function highlight(text, q) {
+  const re = new RegExp(`(${q})`, 'gi');
+  return text.replace(re, '<mark style="background:rgba(201,169,110,.3);color:inherit;border-radius:2px">$1</mark>');
+}
+
+function handleSearchHit(locId, lat, lng) {
+  map.setView([parseFloat(lat), parseFloat(lng)], 10, {animate:true});
+  openPanel(locId);
+  searchResults.style.display = 'none';
+  searchInput.value = '';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-wrap')) searchResults.style.display = 'none';
+});
+
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL TIMELINE DRAWER
+═══════════════════════════════════════════════════════════ */
+function buildTimeline() {
+  const track = document.getElementById('tl-track');
+  // Group by year
+  const byYear = {};
+  GLOBAL_EVENTS.forEach(e => {
+    if (!byYear[e.year]) byYear[e.year] = [];
+    byYear[e.year].push(e);
+  });
+  const years = Object.keys(byYear).sort((a,b) => a-b);
+  const minY = parseInt(years[0]), maxY = parseInt(years[years.length-1]);
+  document.getElementById('tl-range').textContent = `${minY} – ${maxY}`;
+
+  // Build ticks
+  let html = '';
+  years.forEach(yr => {
+    const evts = byYear[yr];
+    html += `<div class="tl-tick">`;
+    evts.forEach(e => {
+      const locIds = LOCATIONS.filter(l => (l.globalEvents||[]).includes(e.id) || (l.history||[]).some(h => h.year == e.year && h.event.toLowerCase().includes(e.label.toLowerCase().slice(0,8)))).map(l => l.id);
+      const clickId = locIds[0] || null;
+      html += `<div class="tl-evt-dot ${e.cat}" title="${e.label}" onclick="${clickId ? `openPanel('${clickId}')` : ''}" style="cursor:${clickId?'pointer':'default'}"></div>`;
+      html += `<div class="tl-evt-label">${e.label}</div>`;
+    });
+    html += `<div class="tl-tick-line"></div><div class="tl-tick-year">${yr}</div>`;
+    html += `</div>`;
+  });
+  track.innerHTML = html;
+}
+buildTimeline();
+
+document.getElementById('btn-timeline').addEventListener('click', () => {
+  const drawer = document.getElementById('timeline-drawer');
+  drawer.classList.toggle('open');
+  document.getElementById('btn-timeline').classList.toggle('active');
+});
+document.getElementById('tl-close-btn').addEventListener('click', () => {
+  document.getElementById('timeline-drawer').classList.remove('open');
+  document.getElementById('btn-timeline').classList.remove('active');
+});
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════════════════ */
+let isDark = false;
+document.getElementById('btn-dark').addEventListener('click', () => {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('btn-dark').textContent = isDark ? '☀️' : '🌙';
+  if (isDark) {
+    map.removeLayer(lightTiles);
+    darkTiles.addTo(map);
+  } else {
+    map.removeLayer(darkTiles);
+    lightTiles.addTo(map);
+  }
+  // system preference
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches && !isDark) {
+    // skip
+  }
+});
+
+// Honour system dark mode on load
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  setTimeout(() => document.getElementById('btn-dark').click(), 1400);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOCATE / FIT
+═══════════════════════════════════════════════════════════ */
+document.getElementById('btn-locate').addEventListener('click', () => {
+  map.fitBounds(KURDISTAN_BOUNDS, {padding:[40,40], animate:true});
+});
+
+/* ═══════════════════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════════════════ */
+setTimeout(() => {
+  document.getElementById('loading').classList.add('hide');
+}, 1500);
+
+window.openPanel = openPanel;
+window.closePanel = closePanel;
+window.switchTab = switchTab;
+window.handleSearchHit = handleSearchHit;
+})(); // end IIFE
+}); // end window load
+</script>
+</body>
+</html>
